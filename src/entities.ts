@@ -1,39 +1,54 @@
+/** Represents a lookup from ID to object of type T. */
 type Lookup<T> = { [id: string]: T };
 
+/** Allowed vertex types. */
 type VertexType = "ACTIVITY" | "EVENT" | "GATEWAY";
 
+/** Represents any vertex. */
 interface BaseVertex {
+  /** Vertex type. */
   type: VertexType;
+  /** Vertex variant. Corresponds to placeholder name for anti-pattern placeholders. */
   variant: string | null;
 }
 
+/** Represents a vertex in an anti-pattern. */
 interface AntiPatternVertex extends BaseVertex {
+  /** Unique ID of the vertex in the encompassing anti-pattern graph. */
   id: string;
-  placeholder: boolean; // if true, variant is interpreted as placeholder name
+  /** Whether the vertex contains a placeholder and the variant should be interpreted as placeholder name. */
+  placeholder: boolean;
 }
 
+/** Creates an anti-pattern vertex.
+ * See interface for parameter descriptions.
+ */
 export function createAntiPatternVertex(
   id: string,
   type: VertexType,
   variant: string,
-  placeholder?: boolean
+  placeholder = false
 ): AntiPatternVertex {
   return {
     id,
     type,
     variant,
-    placeholder: placeholder || false,
+    placeholder,
   };
 }
 
+/** Represents a vertex in a Cypher query. */
 interface NeoVertex extends BaseVertex {
+  /** Unique variable name in the query. */
   variable: string;
 }
 
+/** Returns the Cypher representation of the given Neo vertex. */
 export function stringifyNeoVertex(v: NeoVertex): string {
   return `(${v.variable}${v.variant ? ":" + v.variant : ""}:${v.type})`;
 }
 
+/** Creates a Neo4j vertex from an anti-pattern vertex. */
 export function createNeoVertex(apVertex: AntiPatternVertex): NeoVertex {
   return {
     variable: apVertex.id,
@@ -42,18 +57,31 @@ export function createNeoVertex(apVertex: AntiPatternVertex): NeoVertex {
   };
 }
 
+/** Represents an arbitrary edge. */
 interface BaseEdge {
+  /** Identification of starting node. */
   from: string;
+  /** Identification of end node. */
   to: string;
+  /** Minimum repeatability. */
   lower: number;
+  /** Maximum repeatability */
   upper: number;
 }
 
+/** Represents an edge of an anti-pattern graph. */
 interface AntiPatternEdge extends BaseEdge {
+  /** Whether the edge indicates a missing path to an activity. */
   missing: boolean;
+  /** The optionally associated condition. */
   condition?: string;
 }
 
+/**
+ * Creates an edge for an anti-pattern graph.
+ * See corresponding interface for parameter descriptions.
+ * Defaults to `[1..1]` for repeatability, `false` for `missing` and no `condition`.
+ */
 export function createAntiPatternEdge(
   from: string,
   to: string,
@@ -74,10 +102,13 @@ export function createAntiPatternEdge(
   };
 }
 
+/** Represents an edge in a Neo4j Cypher query. */
 interface NeoEdge extends BaseEdge {
+  /** Unique variable name. */
   variable: string;
 }
 
+/** Creates a Neo4j Cypher edge from an anti-pattern edge. */
 export function createNeoEdge(
   variable: string,
   apEdge: AntiPatternEdge
@@ -91,6 +122,7 @@ export function createNeoEdge(
   };
 }
 
+/** Returns the Cypher representation for a given edge. */
 export function stringifyNeoEdge(e: NeoEdge): string {
   let repeat = "";
   if (e.lower === 1 && e.upper === 1) {
@@ -106,41 +138,50 @@ export function stringifyNeoEdge(e: NeoEdge): string {
   return `(${e.from})-[${e.upper === 1 ? e.variable : ""}${repeat}]->(${e.to})`;
 }
 
+/** Documents a vertex which must be matched in a Cypher query. */
 interface VertexMatch {
+  /** The vertex to match. */
   vertex: NeoVertex;
+  /** Whether the vertex should be optionally matched or not. */
   optional: boolean;
 }
 
+/** Returns the Cypher MATCH statement for a given vertex match. */
 export function stringifyVertexMatch(m: VertexMatch) {
   return `${m.optional ? "OPTIONAL " : ""}MATCH ${stringifyNeoVertex(
     m.vertex
   )}`;
 }
 
+/** Documents an edge which must be matched in a Cypher query. */
 interface EdgeMatch {
+  /** Unique path variable to be returned later. */
   pathVariable: string;
+  /** The edge to match. */
   edge: NeoEdge;
 }
 
+/** Returns the Cypher MATCH statement for an edge match. */
 export function stringifyEdgeMatch(m: EdgeMatch) {
   return `MATCH ${m.pathVariable}=${stringifyNeoEdge(m.edge)}`;
 }
 
-interface Query {
-  vertexMatches: VertexMatch[];
-  edgeMatches: EdgeMatch[];
-  where: string[];
-}
-
-export interface AntiPatternGraph2 {
+/** Represents an anti-pattern graph. */
+export interface AntiPatternGraph {
+  /** Vertices of graph indexed by ID. */
   vertices: Lookup<AntiPatternVertex>;
+  /** Edges of graph. */
   edges: AntiPatternEdge[];
 }
 
-export interface Clauses {
-  // TODO array possible when duplicates are removed?
-  matchVertex: Lookup<VertexMatch>;
+/** Represents a set of Cypher statements which can be combined into a query. */
+export interface StatementCollection {
+  /** Vertex matches indexed by vertex variable. */
+  matchVertex: Lookup<VertexMatch>; // Lookup instead of array for duplicate removal
+  /** List of edge matches. */
   matchEdge: EdgeMatch[];
+  /** List of where clauses. */
   where: string[];
+  /** Mapping from placeholder identifier to vertex variables which include the identifier. */
   placeholders: Lookup<string[]>;
 }

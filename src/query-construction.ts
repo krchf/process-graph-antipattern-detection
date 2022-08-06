@@ -1,50 +1,58 @@
 import {
-  AntiPatternGraph2,
-  Clauses,
+  AntiPatternGraph,
   createNeoVertex,
   createNeoEdge,
+  StatementCollection,
   stringifyVertexMatch,
   stringifyEdgeMatch,
   stringifyNeoEdge,
 } from "./entities";
 
+/** Global counters for variables. */
 interface Counters {
+  /** Number of path variables. */
   paths: number;
+  /** Number of relation/edge variables. */
   relations: number;
 }
 
+/**
+ * Processes a single edge of the anti-pattern graph.
+ *
+ * @param graph The complete anti-pattern graph.
+ * @param edgeIndex Index of the edge to process w.r.t. to `graph.edges`.
+ * @param counters Global variable counters.
+ * @returns A collection of Cypher statements for the edge.
+ */
 function processEdge(
+  graph: AntiPatternGraph,
   edgeIndex: number,
-  graph: AntiPatternGraph2,
   counters: Counters
-): Clauses {
+): StatementCollection {
   const edge = graph.edges[edgeIndex];
   const from = graph.vertices[edge.from];
   const to = graph.vertices[edge.to];
 
-  const res: Clauses = {
+  const res: StatementCollection = {
     matchVertex: {},
     matchEdge: [],
     where: [],
     placeholders: {},
   };
 
+  // add MATCH-statements for nodes, overwriting existing ones
   res.matchVertex[edge.from] = {
     vertex: createNeoVertex(graph.vertices[edge.from]),
     optional: false,
   };
   res.matchVertex[edge.to] = {
     vertex: createNeoVertex(graph.vertices[edge.to]),
-    optional: false,
-  };
-  res.matchVertex[edge.to] = {
-    vertex: createNeoVertex(graph.vertices[edge.to]),
-    optional: edge.missing,
+    optional: edge.missing, // activity may not be included in graph
   };
 
   const neoEdge = createNeoEdge(`r${counters.relations++}`, edge);
-
   if (!edge.missing) {
+    // create MATCH-statement for relation/edge only if it does not denote a missing path
     res.matchEdge.push({
       pathVariable: `p${counters.paths++}`,
       edge: neoEdge,
@@ -57,7 +65,7 @@ function processEdge(
     res.where.push(`${neoEdge.variable}.condition="${edge.condition}"`);
   }
 
-  // store placeholders
+  // track placeholders
   for (const v of [from, to]) {
     if (v.placeholder) {
       const name = v.variant as string;
@@ -72,65 +80,78 @@ function processEdge(
   return res;
 }
 
-function asdf(clauses: Clauses, noOfPaths: number) {
-  let matchClauses: string[] = [];
-  let whereClauses: string[] = clauses.where;
+/**
+ * Builds and returns the Cypher representation of a statement collection.
+ *
+ * @param StatementCollection Statement collection to build query from
+ */
+function prepareAndJoinStatements(StatementCollection: StatementCollection) {
+  let matchStatements: string[] = [];
+  let whereStatements: string[] = StatementCollection.where;
+  const pathVariables: string[] = [];
 
-  const vertexMatches = Object.values(clauses.matchVertex);
+  // make sure that mandatory matches are executed before optional matches
+  const vertexMatches = Object.values(StatementCollection.matchVertex);
   const mandatoryMatches = vertexMatches.filter((m) => !m.optional);
   const optionalMatches = vertexMatches.filter((m) => m.optional);
 
   for (const vm of Object.values(mandatoryMatches)) {
-    matchClauses.push(stringifyVertexMatch(vm));
+    matchStatements.push(stringifyVertexMatch(vm));
   }
-  for (const em of clauses.matchEdge) {
-    matchClauses.push(stringifyEdgeMatch(em));
+  for (const em of StatementCollection.matchEdge) {
+    matchStatements.push(stringifyEdgeMatch(em));
+    pathVariables.push(em.pathVariable);
   }
   for (const vm of Object.values(optionalMatches)) {
-    matchClauses.push(stringifyVertexMatch(vm));
+    matchStatements.push(stringifyVertexMatch(vm));
   }
 
-  for (const nodes of Object.values(clauses.placeholders)) {
+  // add final WHERE-statements for placeholders
+  // (since they not necessarily occur adjacent in one edge)
+  for (const nodes of Object.values(StatementCollection.placeholders)) {
     if (nodes.length > 1) {
       // TODO generalize to more nodes
-      whereClauses.push(`labels(${nodes[0]})=labels(${nodes[1]})`);
+      whereStatements.push(`labels(${nodes[0]})=labels(${nodes[1]})`);
     }
     // else: don't care about anonymous placeholders
   }
 
-  const paths: string[] = [];
-  for (let i = 0; i < noOfPaths; i++) {
-    paths.push(`p${i}`);
-  }
-
-  return `${matchClauses.join("\n")}${
-    whereClauses.length > 0 ? "\nWHERE " + whereClauses.join("\nAND ") : ""
-  }\nRETURN ${paths.join(",")}`;
+  return `${matchStatements.join("\n")}${
+    whereStatements.length > 0
+      ? "\nWHERE " + whereStatements.join("\nAND ")
+      : ""
+  }\nRETURN ${pathVariables.join(",")}`;
 }
 
-export function buildQuery(graph: AntiPatternGraph2): string {
-  // TODO generalize to more edges
+/** Builds a Cypher query for the given anti-pattern graph. */
+export function buildQuery(graph: AntiPatternGraph): string {
   const counters: Counters = {
     paths: 0,
     relations: 0,
   };
-  const clauses: Clauses = {
+  const statements: StatementCollection = {
     matchVertex: {},
     matchEdge: [],
     where: [],
     placeholders: {},
   };
 
+  // traverse edges
   for (let i = 0; i < graph.edges.length; i++) {
-    const edgeClauses = processEdge(i, graph, counters);
-    mergeClauses(clauses, edgeClauses);
+    const edgeStatementCollection = processEdge(graph, i, counters);
+    mergeStatementCollection(statements, edgeStatementCollection);
   }
 
-  return asdf(clauses, counters.paths);
+  return prepareAndJoinStatements(statements);
 }
 
-function mergeClauses(c1: Clauses, c2: Clauses) {
-  // TODO implement properly
+/** Merges all statements of collection c2 into c1. */
+function mergeStatementCollection(
+  c1: StatementCollection,
+  c2: StatementCollection
+) {
+  // TODO consider duplicates, avoid overwrites
+
   for (const [vertexId, vertexMatch] of Object.entries(c2.matchVertex)) {
     c1.matchVertex[vertexId] = vertexMatch;
   }
@@ -140,6 +161,7 @@ function mergeClauses(c1: Clauses, c2: Clauses) {
   for (const where of c2.where) {
     c1.where.push(where);
   }
+
   for (const [placeholderId, nodes] of Object.entries(c2.placeholders)) {
     if (!c1.placeholders[placeholderId]) {
       c1.placeholders[placeholderId] = nodes;
