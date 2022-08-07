@@ -172,6 +172,21 @@ Run `docker compose down`
 
 ### Code Optimizations
 
-- Instead of outputting vertex and edge matches separately, we could aggregate them based on our intermediate query structure constructed from the anti-pattern to potentially improve query execution.
+- Instead of outputting vertex and edge matches separately, we could aggregate them based on our intermediate query structure constructed from the anti-pattern to potentially improve query execution. Example:
+
+  ```
+  MATCH (opt1:NW_OPT:ACTIVITY)-[r0]->(opt2:NW_OPT:ACTIVITY)
+  RETURN p0
+  ```
+
+  instead of
+
+  ```
+  MATCH (opt1:NW_OPT:ACTIVITY)
+  MATCH (opt2:NW_OPT:ACTIVITY)
+  MATCH p0=(opt1)-[r0]->(opt2)
+  RETURN p0
+  ```
+
 - For anti-pattern _(c)_, we inserted the end event manually to match a whole path instead of the starting node only. This could potentially be done automatically.
 - Source code documentation is work in progress.
