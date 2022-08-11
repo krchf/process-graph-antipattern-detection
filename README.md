@@ -14,7 +14,7 @@ This project demonstrates the technical feasibility of detecting anti-patterns i
 1. Run `docker compose up -d && docker-compose logs -f neo4j`
 2. Wait for http://localhost:7474 to be available
 3. Connect to DB using "No authentication"
-4. Run queries
+4. Run queries - either:
    1. Use queries below
    2. Regenerate queries by running `npm start`
 
