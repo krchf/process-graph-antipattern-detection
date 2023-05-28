@@ -147,6 +147,29 @@ WHERE r1.condition="incorrect topology"
 RETURN p0,p1
 ```
 
+## Demonstration "Conditional Nonexistent"
+
+**Graph Creation:**
+
+```
+CREATE (end:END:EVENT {name:"END"});
+
+CREATE (start:START:EVENT {name:"START"})
+-[:FLOW]->(red:NW_RED:ACTIVITY {name:"Reduce"})
+-[:FLOW]->(x:EXCLUSIVE:GATEWAY {name:"x"});
+
+MATCH (x:EXCLUSIVE:GATEWAY), (end:END)
+CREATE (x)
+-[:FLOW]->(red:NW_RR:ACTIVITY {name:"Reverse"})
+-[:FLOW]->(end);
+
+MATCH (x:EXCLUSIVE:GATEWAY), (end:END)
+CREATE (x)
+-[:FLOW]->(end);
+```
+
+_Intended for anti-pattern (c)._
+
 ## Cleanup
 
 **Clear Database:**

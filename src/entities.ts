@@ -135,7 +135,7 @@ export function stringifyNeoEdge(e: NeoEdge): string {
     repeat = `*${e.lower}..${e.upper}`;
   }
 
-  return `(${e.from})-[${e.upper === 1 ? e.variable : ""}${repeat}]->(${e.to})`;
+  return `(${e.from})-[${e.variable}${repeat}]->(${e.to})`;
 }
 
 /** Documents a vertex which must be matched in a Cypher query. */

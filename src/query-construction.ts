@@ -5,7 +5,6 @@ import {
   StatementCollection,
   stringifyVertexMatch,
   stringifyEdgeMatch,
-  stringifyNeoEdge,
 } from "./entities";
 
 /** Global counters for variables. */
@@ -58,7 +57,12 @@ function processEdge(
       edge: neoEdge,
     });
   } else {
-    res.where.push(`NOT exists(${stringifyNeoEdge(neoEdge)})`);
+    res.where.push(
+      `NONE (n IN nodes(p${counters.paths - 1}) WHERE n=${edge.to})`
+    );
+
+    // does not work for conditional execution:
+    // res.where.push(`NOT exists(${stringifyNeoEdge(neoEdge)})`);
   }
 
   if (edge.condition) {
