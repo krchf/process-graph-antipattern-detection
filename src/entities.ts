@@ -148,9 +148,7 @@ interface VertexMatch {
 
 /** Returns the Cypher MATCH statement for a given vertex match. */
 export function stringifyVertexMatch(m: VertexMatch) {
-  return `${m.optional ? "OPTIONAL " : ""}MATCH ${stringifyNeoVertex(
-    m.vertex
-  )}`;
+  return `MATCH ${stringifyNeoVertex(m.vertex)}`;
 }
 
 /** Documents an edge which must be matched in a Cypher query. */

@@ -99,15 +99,26 @@ function prepareAndJoinStatements(StatementCollection: StatementCollection) {
   const mandatoryMatches = vertexMatches.filter((m) => !m.optional);
   const optionalMatches = vertexMatches.filter((m) => m.optional);
 
+  // check that missing elements are actually included in graph
+  if (optionalMatches.length > 0) {
+    console.log("> First (should return):\n");
+    let query = optionalMatches.map(stringifyVertexMatch).join("\n");
+    query += `\nRETURN ${optionalMatches
+      .map((v) => v.vertex.variable)
+      .join(",")}`;
+    console.log(query);
+    console.log("\n> Second (should not return):\n");
+  }
+
   for (const vm of Object.values(mandatoryMatches)) {
+    matchStatements.push(stringifyVertexMatch(vm));
+  }
+  for (const vm of Object.values(optionalMatches)) {
     matchStatements.push(stringifyVertexMatch(vm));
   }
   for (const em of StatementCollection.matchEdge) {
     matchStatements.push(stringifyEdgeMatch(em));
     pathVariables.push(em.pathVariable);
-  }
-  for (const vm of Object.values(optionalMatches)) {
-    matchStatements.push(stringifyVertexMatch(vm));
   }
 
   // add final WHERE-statements for placeholders
