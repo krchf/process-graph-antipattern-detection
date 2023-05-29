@@ -87,43 +87,27 @@ function processEdge(
 /**
  * Builds and returns the Cypher representation of a statement collection.
  *
- * @param StatementCollection Statement collection to build query from
+ * @param statementCollection Statement collection to build query from
  */
-function prepareAndJoinStatements(StatementCollection: StatementCollection) {
+function prepareAndJoinStatements(statementCollection: StatementCollection) {
   let matchStatements: string[] = [];
-  let whereStatements: string[] = StatementCollection.where;
+  let whereStatements: string[] = statementCollection.where;
   const pathVariables: string[] = [];
 
   // make sure that mandatory matches are executed before optional matches
-  const vertexMatches = Object.values(StatementCollection.matchVertex);
-  const mandatoryMatches = vertexMatches.filter((m) => !m.optional);
-  const optionalMatches = vertexMatches.filter((m) => m.optional);
+  const vertexMatches = Object.values(statementCollection.matchVertex);
 
-  // check that missing elements are actually included in graph
-  if (optionalMatches.length > 0) {
-    console.log("> First (should return):\n");
-    let query = optionalMatches.map(stringifyVertexMatch).join("\n");
-    query += `\nRETURN ${optionalMatches
-      .map((v) => v.vertex.variable)
-      .join(",")}`;
-    console.log(query);
-    console.log("\n> Second (should not return):\n");
-  }
-
-  for (const vm of Object.values(mandatoryMatches)) {
+  for (const vm of Object.values(vertexMatches)) {
     matchStatements.push(stringifyVertexMatch(vm));
   }
-  for (const vm of Object.values(optionalMatches)) {
-    matchStatements.push(stringifyVertexMatch(vm));
-  }
-  for (const em of StatementCollection.matchEdge) {
+  for (const em of statementCollection.matchEdge) {
     matchStatements.push(stringifyEdgeMatch(em));
     pathVariables.push(em.pathVariable);
   }
 
   // add final WHERE-statements for placeholders
   // (since they not necessarily occur adjacent in one edge)
-  for (const nodes of Object.values(StatementCollection.placeholders)) {
+  for (const nodes of Object.values(statementCollection.placeholders)) {
     if (nodes.length > 1) {
       // TODO generalize to more nodes
       whereStatements.push(`labels(${nodes[0]})=labels(${nodes[1]})`);
@@ -138,8 +122,8 @@ function prepareAndJoinStatements(StatementCollection: StatementCollection) {
   }\nRETURN ${pathVariables.join(",")}`;
 }
 
-/** Builds a Cypher query for the given anti-pattern graph. */
-export function buildQuery(graph: AntiPatternGraph): string {
+/** Builds a Cypher queries for the given anti-pattern graph. */
+export function buildQueries(graph: AntiPatternGraph): string[] {
   const counters: Counters = {
     paths: 0,
     relations: 0,
@@ -150,6 +134,7 @@ export function buildQuery(graph: AntiPatternGraph): string {
     where: [],
     placeholders: {},
   };
+  const queries: string[] = [];
 
   // traverse edges
   for (let i = 0; i < graph.edges.length; i++) {
@@ -157,7 +142,20 @@ export function buildQuery(graph: AntiPatternGraph): string {
     mergeStatementCollection(statements, edgeStatementCollection);
   }
 
-  return prepareAndJoinStatements(statements);
+  // build initial query to ensure that nodes which are the target of a nonexistent flow are contained in the graph
+  const optionalMatches = Object.values(statements.matchVertex).filter(
+    (v) => v.optional
+  );
+  if (optionalMatches.length > 0) {
+    let query = optionalMatches.map(stringifyVertexMatch).join("\n");
+    query += `\nRETURN ${optionalMatches
+      .map((v) => v.vertex.variable)
+      .join(",")}`;
+    queries.push(query);
+  }
+
+  queries.push(prepareAndJoinStatements(statements));
+  return queries;
 }
 
 /** Merges all statements of collection c2 into c1. */

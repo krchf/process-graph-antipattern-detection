@@ -66,12 +66,6 @@ MATCH p0=(opt)-[r0]->(s)
 RETURN p0
 ```
 
-<!-- 4ms -->
-<!-- ```
-MATCH p=(n:NetwOpt)-[:FLOW]->(m)
-RETURN p
-``` -->
-
 ### (b) "No redundant service invocation"
 
 ```
@@ -81,13 +75,6 @@ MATCH p0=(s1)-[r0]->(s2)
 WHERE labels(s1)=labels(s2)
 RETURN p0
 ```
-
-<!-- 6ms -->
-<!-- ```
-MATCH p=(n)-[r:UNCONTROLLED_FLOW]->(m)
-WHERE labels(n)=labels(m)
-RETURN p
-``` -->
 
 ### (c) Network reduction must be undone
 
@@ -99,13 +86,6 @@ OPTIONAL MATCH (rev:NW_RR:ACTIVITY)
 WHERE NOT exists((red)-[*]->(rev))
 RETURN p0
 ```
-
-<!-- 4ms -->
-<!-- ```
-MATCH p=(n:NetwRed)-[*]->(e:END)
-WHERE NOT EXISTS((n)-[*]->(:NetwRedRev))
-RETURN p
-``` -->
 
 ## Demonstration "Correct Process"
 
