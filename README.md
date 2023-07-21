@@ -1,6 +1,8 @@
 # Anti-Pattern Detection in Process-Driven Decision Support Systems - Demonstration
 
-This project demonstrates the technical feasibility of detecting anti-patterns in a process model describing a PD-DSS by utilizing graph matching provided by the graph database [_Neo4j_](https://neo4j.com/).
+This project demonstrates the technical feasibility of using graph matching provided by the graph database [_Neo4j_](https://neo4j.com/) to detect anti-patterns in a process model describing a decision support system.
+
+> Note: The implementation originally described in the paper ["Anti-pattern Detection in Process-Driven Decision Support Systems"](https://link.springer.com/chapter/10.1007/978-3-031-20706-8_16) was extended to include a bug fix for conditional execution and better benchmarking. The original implementation is still available on the [`icsob-2022` branch](https://github.com/krchf/process-graph-antipattern-detection/tree/icsob-2022).
 
 ## Getting Started
 
@@ -15,8 +17,8 @@ This project demonstrates the technical feasibility of detecting anti-patterns i
 2. Wait for http://localhost:7474 to be available
 3. Connect to DB using "No authentication"
 4. Run queries - either:
-   1. Use queries below
-   2. Regenerate queries by running `npm start`
+   1. Run benchmark via `npm start`.
+   2. Insert queries below into the Neo4j UI (or regenerate queries by running `npm run print-queries`).
 
 > Note: Database must be cleared before inserting a new process model. See ["Cleanup"](#cleanup) section at the end of this document for details.
 
@@ -66,12 +68,6 @@ MATCH p0=(opt)-[r0]->(s)
 RETURN p0
 ```
 
-<!-- 4ms -->
-<!-- ```
-MATCH p=(n:NetwOpt)-[:FLOW]->(m)
-RETURN p
-``` -->
-
 ### (b) "No redundant service invocation"
 
 ```
@@ -82,30 +78,23 @@ WHERE labels(s1)=labels(s2)
 RETURN p0
 ```
 
-<!-- 6ms -->
-<!-- ```
-MATCH p=(n)-[r:UNCONTROLLED_FLOW]->(m)
-WHERE labels(n)=labels(m)
-RETURN p
-``` -->
-
 ### (c) Network reduction must be undone
 
 ```
+> First query (existence of target nodes)
+
+MATCH (rev:NW_RR:ACTIVITY)
+RETURN rev
+
+> Second query (existence of anti-pattern)
+
 MATCH (red:NW_RED:ACTIVITY)
 MATCH (end:END:EVENT)
-MATCH p0=(red)-[*]->(end)
-OPTIONAL MATCH (rev:NW_RR:ACTIVITY)
-WHERE NOT exists((red)-[*]->(rev))
+MATCH (rev:NW_RR:ACTIVITY)
+MATCH p0=(red)-[r0*]->(end)
+WHERE NONE (n IN nodes(p0) WHERE n=rev)
 RETURN p0
 ```
-
-<!-- 4ms -->
-<!-- ```
-MATCH p=(n:NetwRed)-[*]->(e:END)
-WHERE NOT EXISTS((n)-[*]->(:NetwRedRev))
-RETURN p
-``` -->
 
 ## Demonstration "Correct Process"
 
@@ -141,11 +130,34 @@ CREATE (x)
 MATCH (opt:NW_OPT:ACTIVITY)
 MATCH (gw:EXCLUSIVE:GATEWAY)
 MATCH (tf:VIS_TOP:ACTIVITY)
-MATCH p0=(opt)-[*]->(gw)
+MATCH p0=(opt)-[r0*]->(gw)
 MATCH p1=(gw)-[r1]->(tf)
 WHERE r1.condition="incorrect topology"
 RETURN p0,p1
 ```
+
+## Demonstration "Conditional Nonexistent"
+
+**Graph Creation:**
+
+```
+CREATE (end:END:EVENT {name:"END"});
+
+CREATE (start:START:EVENT {name:"START"})
+-[:FLOW]->(red:NW_RED:ACTIVITY {name:"Reduce"})
+-[:FLOW]->(x:EXCLUSIVE:GATEWAY {name:"x"});
+
+MATCH (x:EXCLUSIVE:GATEWAY), (end:END)
+CREATE (x)
+-[:FLOW]->(red:NW_RR:ACTIVITY {name:"Reverse"})
+-[:FLOW]->(end);
+
+MATCH (x:EXCLUSIVE:GATEWAY), (end:END)
+CREATE (x)
+-[:FLOW]->(end);
+```
+
+_Intended for anti-pattern (c)._
 
 ## Cleanup
 
@@ -166,7 +178,9 @@ Run `docker compose down`
 
 ### Relevant Files
 
-- `src/demonstration.ts`: Includes the anti-patterns and outputs their corresponding _Cypher_ queries
+- `src/demo/anti-patterns.ts`: Defines the anti-patterns
+- `src/demo/benchmark.ts`: Automatically executes the anti-pattern queries against the process graphs and outputs the execution time
+- `src/demo/print-quries.ts`: Outputs the _Cypher_ query for each anti-pattern
 - `src/entities.ts`: Provides data models and associated functionality such as stringification of query elements
 - `src/query-construction.ts`: Traverses an anti-pattern to build a complete query
 

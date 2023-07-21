@@ -135,7 +135,7 @@ export function stringifyNeoEdge(e: NeoEdge): string {
     repeat = `*${e.lower}..${e.upper}`;
   }
 
-  return `(${e.from})-[${e.upper === 1 ? e.variable : ""}${repeat}]->(${e.to})`;
+  return `(${e.from})-[${e.variable}${repeat}]->(${e.to})`;
 }
 
 /** Documents a vertex which must be matched in a Cypher query. */
@@ -148,9 +148,7 @@ interface VertexMatch {
 
 /** Returns the Cypher MATCH statement for a given vertex match. */
 export function stringifyVertexMatch(m: VertexMatch) {
-  return `${m.optional ? "OPTIONAL " : ""}MATCH ${stringifyNeoVertex(
-    m.vertex
-  )}`;
+  return `MATCH ${stringifyNeoVertex(m.vertex)}`;
 }
 
 /** Documents an edge which must be matched in a Cypher query. */

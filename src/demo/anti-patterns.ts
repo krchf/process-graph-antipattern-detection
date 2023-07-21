@@ -2,23 +2,23 @@ import {
   AntiPatternGraph,
   createAntiPatternVertex,
   createAntiPatternEdge,
-} from "./entities";
-import { buildQuery } from "./query-construction";
+} from "../entities";
 
-/**
- * Constructs and prints the Cypher query for a given anti-pattern graph.
- *
- * @param patternName Name of the pattern.
- * @param graph The anti-pattern graph to construct a query for.
- */
-function printAntiPatternQuery(patternName: string, graph: AntiPatternGraph) {
-  const divider = "-".repeat(patternName.length);
+/** Aggregates multiple anti-patterns (indexed by anti-pattern name/ID). */
+export interface AntiPatternCatalogue {
+  [name: string]: {
+    name: string;
+    graph: AntiPatternGraph;
+  };
+}
 
-  console.log(patternName);
-  console.log(divider);
-  console.log(buildQuery(graph));
-  console.log(divider);
-  console.log("\n");
+/** Defines IDs of anti-patterns. */
+export enum AntiPatternId {
+  DoubleOpt = "apDoubleOpt",
+  RedundantServices = "apRedundantServices",
+  NoCondition = "apNoCondition",
+  MissingReversal = "apMissingReversal",
+  AbusingOpt = "apAbusingOpt",
 }
 
 const apDoubleOpt: AntiPatternGraph = {
@@ -29,8 +29,6 @@ const apDoubleOpt: AntiPatternGraph = {
   edges: [createAntiPatternEdge("opt1", "opt2")],
 };
 
-printAntiPatternQuery("Double optimization", apDoubleOpt);
-
 const apRedundantServices: AntiPatternGraph = {
   vertices: {
     s1: createAntiPatternVertex("s1", "ACTIVITY", "S", true),
@@ -39,8 +37,6 @@ const apRedundantServices: AntiPatternGraph = {
   edges: [createAntiPatternEdge("s1", "s2")],
 };
 
-printAntiPatternQuery("Redundant services", apRedundantServices);
-
 const apNoCondition: AntiPatternGraph = {
   vertices: {
     opt: createAntiPatternVertex("opt", "ACTIVITY", "NW_OPT"),
@@ -48,11 +44,6 @@ const apNoCondition: AntiPatternGraph = {
   },
   edges: [createAntiPatternEdge("opt", "s")],
 };
-
-printAntiPatternQuery(
-  "No conditional processing of optimization output",
-  apNoCondition
-);
 
 const apMissingReversal: AntiPatternGraph = {
   vertices: {
@@ -65,11 +56,6 @@ const apMissingReversal: AntiPatternGraph = {
     createAntiPatternEdge("red", "rev", { upper: Infinity, missing: true }),
   ],
 };
-
-printAntiPatternQuery(
-  "Missing reversal of network reduction",
-  apMissingReversal
-);
 
 const apAbusingOpt: AntiPatternGraph = {
   vertices: {
@@ -85,7 +71,25 @@ const apAbusingOpt: AntiPatternGraph = {
   ],
 };
 
-printAntiPatternQuery(
-  "Using optimization for identification of topology faults",
-  apAbusingOpt
-);
+export const antiPatternCatalogue: AntiPatternCatalogue = {
+  [AntiPatternId.DoubleOpt]: {
+    name: "Double optimization",
+    graph: apDoubleOpt,
+  },
+  [AntiPatternId.RedundantServices]: {
+    name: "Redundant services",
+    graph: apRedundantServices,
+  },
+  [AntiPatternId.NoCondition]: {
+    name: "No conditional processing of optimization output",
+    graph: apNoCondition,
+  },
+  [AntiPatternId.MissingReversal]: {
+    name: "Missing reversal of network reduction",
+    graph: apMissingReversal,
+  },
+  [AntiPatternId.AbusingOpt]: {
+    name: "Using optimization for identification of topology faults",
+    graph: apAbusingOpt,
+  },
+};
