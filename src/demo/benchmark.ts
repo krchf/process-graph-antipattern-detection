@@ -93,7 +93,11 @@ function constructSummary(
     antiPatternFound === shouldMatch ? "Correct" : "Incorrect!!!"
   }] - ${antiPatternFound ? "detected" : "not detected"} - ${
     execTimes[execTimes.length - 1]
-  }ms`;
+  }ms${
+    execTimes.length > 1
+      ? " (total: " + execTimes.reduce((p, c) => p + c) + "ms)"
+      : ""
+  }`;
 }
 
 async function sleep(ms: number) {
