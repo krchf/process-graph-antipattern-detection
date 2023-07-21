@@ -4,7 +4,7 @@ import {
   createAntiPatternEdge,
 } from "../entities";
 
-// TODO docs
+/** Aggregates multiple anti-patterns (indexed by anti-pattern name/ID). */
 export interface AntiPatternCatalogue {
   [name: string]: {
     name: string;
@@ -12,6 +12,7 @@ export interface AntiPatternCatalogue {
   };
 }
 
+/** Defines IDs of anti-patterns. */
 export enum AntiPatternId {
   DoubleOpt = "apDoubleOpt",
   RedundantServices = "apRedundantServices",

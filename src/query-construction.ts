@@ -61,7 +61,7 @@ function processEdge(
       `NONE (n IN nodes(p${counters.paths - 1}) WHERE n=${edge.to})`
     );
 
-    // the following does not work for conditional execution:
+    // - the following does not work for conditional execution:
     // res.where.push(`NOT exists(${stringifyNeoEdge(neoEdge)})`);
   }
 

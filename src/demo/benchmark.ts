@@ -3,10 +3,15 @@ import * as neo4j from "neo4j-driver";
 import { AntiPatternId, antiPatternCatalogue } from "./anti-patterns";
 import { buildQueries } from "../query-construction";
 
-// TODO docs
+/** Represents a benchmark for a process graph. */
 interface Benchmark {
+  /** Name of process graph / benchmark in output. */
   name: string;
+
+  /** Cypher query for graph construction. */
   graphConstructionQuery: string;
+
+  /** Indicates whether anti-pattern with ID is present in graph (true) or not (false). */
   antiPatternMatches: {
     [id: string]: boolean;
   };
@@ -84,6 +89,7 @@ const benchmarks: Benchmark[] = [
   },
 ];
 
+/** Constructs the string representation for the result of a single anti-pattern check. */
 function constructSummary(
   antiPatternFound: boolean,
   shouldMatch: boolean,
@@ -104,6 +110,7 @@ async function sleep(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// "main" function to execute all benchmarks
 (async () => {
   let driver: neo4j.Driver = undefined as unknown as neo4j.Driver;
 
