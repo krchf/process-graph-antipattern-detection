@@ -15,7 +15,7 @@ function printAntiPatternQuery(patternName: string, graph: AntiPatternGraph) {
 
   console.log(patternName);
   console.log(divider);
-  if (queries.length > 0) {
+  if (queries.length > 1) {
     console.log("> First query (existence of target nodes)\n");
     console.log(queries[0]);
     console.log("\n> Second query (existence of anti-pattern)\n");
